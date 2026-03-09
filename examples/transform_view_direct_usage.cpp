@@ -1,12 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-#include <beman/transform_view/transform_view.hpp>
-
+#ifdef BEMAN_HAS_STD_MODULE
+import std;
+#else
 #include <iostream>
+#include <ranges>
+#include <string>
+#endif
+
+#ifdef BEMAN_HAS_MODULES
+import beman.transform_view;
+#else
+#include <beman/transform_view/transform_view.hpp>
+#endif
 
 namespace tv26 = beman::transform_view;
 
 int main() {
+    // TODO(CK): warning: C-style casts are discouraged; use static_cast
     auto to_lower = [](char c) { return char(c + 0x20); };
 
     const std::string upper_str = "LOWER";

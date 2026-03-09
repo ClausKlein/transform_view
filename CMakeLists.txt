@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
-cmake_minimum_required(VERSION 3.28...4.2)
+cmake_minimum_required(VERSION 3.30...4.3)
+
+include(./cmake/prelude.cmake)
 
 project(
     beman.transform_view # CMake Project Name, which is also the name of the top-level
@@ -9,6 +11,9 @@ project(
     LANGUAGES CXX
     VERSION 0.1.0
 )
+
+# Modules opt in only on compilers that support it: msvc, g++-15 and clang-20+
+include(./cmake/cxx-modules-rules.cmake)
 
 # [CMAKE.SKIP_TESTS]
 option(
@@ -25,28 +30,56 @@ option(
 )
 
 # for find of beman-install-library
-include(infra/cmake/beman-install-library-config.cmake)
+include(infra/cmake/beman-install-library.cmake)
 
 add_library(beman.transform_view INTERFACE)
 add_library(beman::transform_view ALIAS beman.transform_view)
 
-target_sources(
-    beman.transform_view
-    PUBLIC FILE_SET HEADERS BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
+target_sources(beman.transform_view PUBLIC FILE_SET HEADERS BASE_DIRS include)
 
 set_target_properties(
     beman.transform_view
-    PROPERTIES VERIFY_INTERFACE_HEADER_SETS ON
+    PROPERTIES VERIFY_INTERFACE_HEADER_SETS ${PROJECT_IS_TOP_LEVEL}
 )
 
 add_subdirectory(include/beman/transform_view)
 
-find_package(beman-install-library REQUIRED)
-beman_install_library(beman.transform_view)
+if(BEMAN_USE_MODULES)
+    add_library(beman.transform_view_module STATIC)
+    add_library(beman::transform_view_module ALIAS beman.transform_view_module)
+    target_compile_features(
+        beman.transform_view_module
+        PUBLIC cxx_std_${CMAKE_CXX_STANDARD}
+    )
+    if(BEMAN_HAS_IMPORT_STD)
+        target_compile_definitions(
+            beman.transform_view_module
+            PUBLIC BEMAN_HAS_IMPORT_STD
+        )
+        set_target_properties(
+            beman.transform_view_module
+            PROPERTIES CXX_MODULE_STD ON
+        )
+    endif()
+
+    target_sources(
+        beman.transform_view_module
+        PUBLIC
+            FILE_SET HEADERS
+                BASE_DIRS include
+                FILES include/beman/transform_view/transform_view.hpp
+    )
+
+    add_subdirectory(src/beman/transform_view)
+endif()
+
+# NOTE: CTest.cmake creates a lot of unused target here! CK
+# NOT needed! include(CTest)
+enable_testing()
+
+beman_install_library(beman.transform_view TARGETS beman.transform_view beman.transform_view_module)
 
 if(BEMAN_TRANSFORM_VIEW_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests/beman/transform_view)
 endif()
 
